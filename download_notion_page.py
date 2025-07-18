@@ -14,7 +14,7 @@ import yaml
 import zipfile
 import tempfile
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import time
 
@@ -220,6 +220,46 @@ async def extract_files_via_export(page, page_name, include_subpages=False, time
         return [], False
 
 
+async def should_download_page(page_config, global_config, s3_storage):
+    """Check if page should be downloaded based on existing S3 metadata."""
+    PAGE_NAME = page_config['name']
+    S3_BUCKET = global_config.get('s3_bucket', 'snowplow-qa-notion-pages')
+    S3_PREFIX = global_config.get('s3_prefix', 'notion-pages')
+    REFRESH_HOURS = global_config.get('refresh_hours', 24)
+    FORCE_REFRESH = global_config.get('force_refresh', False)
+    
+    if FORCE_REFRESH:
+        print(f"🔄 Force refresh enabled - downloading {PAGE_NAME}")
+        return True
+    
+    metadata_key = f"{S3_PREFIX}/{PAGE_NAME}/metadata.json"
+    
+    try:
+        # Check if metadata exists
+        response = s3_storage.s3_client.head_object(Bucket=S3_BUCKET, Key=metadata_key)
+        last_modified = response['LastModified']
+        
+        # Only re-download if older than threshold
+        time_threshold = timedelta(hours=REFRESH_HOURS)
+        time_since_download = datetime.now(last_modified.tzinfo) - last_modified
+        
+        if time_since_download < time_threshold:
+            hours_ago = time_since_download.total_seconds() / 3600
+            print(f"⏭️  Skipping {PAGE_NAME} - downloaded {hours_ago:.1f} hours ago (threshold: {REFRESH_HOURS}h)")
+            return False
+        else:
+            hours_ago = time_since_download.total_seconds() / 3600
+            print(f"🔄 Re-downloading {PAGE_NAME} - last downloaded {hours_ago:.1f} hours ago")
+            return True
+            
+    except Exception:
+        # Metadata doesn't exist, download the page
+        print(f"📥 First time downloading {PAGE_NAME}")
+        return True
+    
+    return True
+
+
 async def download_page_content(page, page_config, global_config):
     """Download content from a specific Notion page using an existing browser page."""
     
@@ -249,6 +289,10 @@ async def download_page_content(page, page_config, global_config):
             return False
     
     s3_storage = download_page_content.s3_storage
+
+    # Check if we should download this page
+    if not await should_download_page(page_config, global_config, s3_storage):
+        return True  # Return success since we're skipping intentionally
 
     try:
         # Navigate to the Notion page
@@ -289,9 +333,8 @@ async def download_page_content(page, page_config, global_config):
         print(f"🔍 Current URL: {current_url}")
         print(f"📄 Page title: {title}")
         
-        # Generate timestamp for filenames
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename_base = f"{PAGE_NAME}_{timestamp}"
+        # Use consistent filenames without timestamps
+        filename_base = PAGE_NAME
         
         # Generate files based on configured formats
         files_to_upload = []
@@ -443,7 +486,7 @@ async def download_page_content(page, page_config, global_config):
                 metadata = {
                     'page_name': PAGE_NAME,
                     'source_url': NOTION_URL,
-                    'download_timestamp': timestamp,
+                    'download_timestamp': datetime.now().isoformat(),
                     'output_formats': OUTPUT_FORMATS,
                     'uploaded_files': uploaded_files,
                     's3_bucket': S3_BUCKET,

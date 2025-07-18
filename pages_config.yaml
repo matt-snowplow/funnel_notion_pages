@@ -6,6 +6,8 @@ config:
   output_formats: ["markdown", "png", "pdf"]  # Formats to generate (markdown is default)
   s3_bucket: "snowplow-qa-notion-pages"
   s3_prefix: "notion-pages"
+  refresh_hours: 24  # Only re-download if older than this many hours
+  force_refresh: false  # Set to true to ignore cache and force re-download
   
 pages:
   - url: "https://www.notion.so/keep-in-the-snow/Git-1c207af295a2807a9d1ecf578d1465ea"
@@ -23,4 +25,8 @@ pages:
 # Available options per page:
 # - subpages: true/false - Include child pages and database records (default: false)
 # - output_formats: ["markdown"] or ["png", "pdf"] or ["markdown", "png", "pdf"]
-# - s3_bucket: "custom-bucket" (overrides global setting) 
+# - s3_bucket: "custom-bucket" (overrides global setting)
+
+# Global cache options:
+# - refresh_hours: Only re-download if older than this many hours (default: 24)
+# - force_refresh: Set to true to ignore cache and force re-download all pages
