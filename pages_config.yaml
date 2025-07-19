@@ -10,17 +10,13 @@ config:
   force_refresh: false  # Set to true to ignore cache and force re-download
   
 pages:
-  - url: "https://www.notion.so/keep-in-the-snow/Git-1c207af295a2807a9d1ecf578d1465ea"
+  - url: "https://www.notion.so/[ORGANISATION]/[PAGE]"
     name: "git"  # Used for filename generation
     subpages: false  # Set to true to include child pages
     
-  - url: "https://www.notion.so/keep-in-the-snow/f7588c331ea846aabd0e25c5c4a35d0b"
+  - url: "https://www.notion.so//[ORGANISATION]/[PAGE]"
     name: "postmortems"  # Used for filename generation
     subpages: true  # Include child pages and database records
-
-  - url: "https://www.notion.so/keep-in-the-snow/SnowStorm-25-07-1c207af295a280658cf7e90071f477c1"
-    name: "snowstorm"  # Used for filename generation
-    subpages: false 
     
 # Available options per page:
 # - subpages: true/false - Include child pages and database records (default: false)
